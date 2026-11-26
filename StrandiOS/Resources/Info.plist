@@ -68,6 +68,8 @@
 	<string>NOOP writes the metrics it computes from your strap back into Apple Health, on-device and only when you allow it.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>NOOP records your route during an outdoor workout to show distance, pace, and a map, and keeps recording while the screen is off. The route stays on your device. Nothing leaves it.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>NOOP uses the camera only when you take a 75 Hard progress photo. The photo is stored on this device and never uploaded.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>NOOP uses the microphone to let you ask the coach a question by voice. The audio is transcribed on-device and never leaves your iPhone.</string>
 	<key>NSMotionUsageDescription</key>

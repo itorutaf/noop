@@ -31,6 +31,8 @@ struct SeventyFiveHardView: View {
     @State private var reviewDay: String?
     @State private var photoItem: PhotosPickerItem?
     @State private var photoThumbs: [String: PlatformImage] = [:]
+    /// The day the in-app camera is capturing for (iPhone only); nil while the camera is closed.
+    @State private var cameraDay: String?
 
     @State private var confirmStart = false
     @State private var confirmRestart = false
@@ -84,12 +86,7 @@ struct SeventyFiveHardView: View {
             Task {
                 let data = try? await item.loadTransferable(type: Data.self)
                 await MainActor.run {
-                    if let data {
-                        let jpeg = AvatarImage.downscaledJPEG(from: data, maxDimension: 1280, quality: 0.8) ?? data
-                        store.savePhoto(jpeg, day: day)
-                        loadThumbs()
-                        afterChange()
-                    }
+                    if let data { storePhoto(data, day: day) }
                     photoItem = nil
                 }
             }
@@ -208,6 +205,14 @@ struct SeventyFiveHardView: View {
                                            active: store.isActive && status.state == .active,
                                            todayComplete: todayDone,
                                            minutes: store.reminderMinutes)
+    }
+
+    /// Downscale a picked or captured photo, save it for the day and refresh what depends on it.
+    private func storePhoto(_ data: Data, day: String) {
+        let jpeg = AvatarImage.downscaledJPEG(from: data, maxDimension: 1280, quality: 0.8) ?? data
+        store.savePhoto(jpeg, day: day)
+        loadThumbs()
+        afterChange()
     }
 
     /// Run after any hand edit: keep the reminder queue in step with the checklist.
@@ -575,7 +580,7 @@ struct SeventyFiveHardView: View {
     private func photoRow(day: String, log: SeventyFiveHard.DayLog) -> some View {
         HStack(alignment: .center, spacing: NoopMetrics.space3) {
             statusIcon(log.progressPhoto)
-            rowText(.progressPhoto, detail: log.progressPhoto ? "Saved on this device only." : "Take one with the Camera, then choose it here.")
+            rowText(.progressPhoto, detail: log.progressPhoto ? "Saved on this device only." : "Take one now or choose one from your library.")
             Spacer(minLength: 0)
             if let image = photoThumbs[day] {
                 Image(platformImage: image)
@@ -585,11 +590,37 @@ struct SeventyFiveHardView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .accessibilityHidden(true)
             }
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                Label(log.progressPhoto ? "Replace" : "Choose", systemImage: "photo.on.rectangle")
-                    .font(StrandFont.caption)
+            #if os(iOS)
+            if CameraCapture.isAvailable {
+                Button {
+                    cameraDay = day
+                } label: {
+                    Image(systemName: "camera.fill").font(.system(size: 18))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(StrandPalette.accent)
+                .accessibilityLabel(Text("Take a progress photo"))
             }
+            #endif
+            PhotosPicker(selection: $photoItem, matching: .images) {
+                Image(systemName: "photo.on.rectangle").font(.system(size: 18))
+            }
+            .accessibilityLabel(Text(log.progressPhoto ? "Replace with a photo from your library" : "Choose a photo from your library"))
         }
+        #if os(iOS)
+        // Attached to the row, not the screen, so the camera can also open from the review sheet.
+        .fullScreenCover(isPresented: cameraBinding(for: day)) {
+            CameraCapture { data in
+                if let data { storePhoto(data, day: day) }
+                cameraDay = nil
+            }
+            .ignoresSafeArea()
+        }
+        #endif
+    }
+
+    private func cameraBinding(for day: String) -> Binding<Bool> {
+        Binding(get: { cameraDay == day }, set: { if !$0 { cameraDay = nil } })
     }
 
     // MARK: - Photos
