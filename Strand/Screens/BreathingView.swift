@@ -140,6 +140,15 @@ private struct BreathingContent: View {
 
     @AppStorage("breathe.lastOutcome") private var lastStoredOutcome = ""
 
+    // MARK: Session log (history, streak, daily goal)
+
+    /// Every logged session, newest first. Loaded on appear and refreshed whenever one is logged.
+    @State private var sessions: [BreathSession] = []
+    /// The session that just ended, shown as the summary card until the next one starts.
+    @State private var justLogged: BreathSession?
+    @State private var showHistory = false
+    @AppStorage(BreathSessionStore.goalKey) private var dailyGoalMinutes = BreathSessionStats.defaultGoalMinutes
+
     /// Opt-in audio pacer — a soft tone at each phase change (rising on the inhale, falling on the
     /// exhale). Default OFF (manual-first). The tones go through an ambient session category, so the
     /// iOS silent switch mutes them like any other ambient sound. Persists across launches.
@@ -219,6 +228,9 @@ private struct BreathingContent: View {
         .sheet(isPresented: $showEdu) {
             breathEduSheet
         }
+        .sheet(isPresented: $showHistory) {
+            BreathHistorySheet(sessions: $sessions)
+        }
         .onChangeCompat(of: mode) { _ in
             // Leaving a mode stops any session it owns so two clocks never run at once.
             if running { stop() }
@@ -232,6 +244,7 @@ private struct BreathingContent: View {
         .onAppear {
             model.startRealtimeHR()
             controllerBox.prepare(model: model, live: live)
+            sessions = BreathSessionStore.load()
             if audioCues { tonePlayer.activate() }
         }
         .onDisappear { model.stopRealtimeHR(); stop(); controller.stop(); tonePlayer.deactivate() }
@@ -248,13 +261,58 @@ private struct BreathingContent: View {
     // MARK: - Breathe mode (the shipped fixed-pace trainer)
 
     @ViewBuilder private var breatheMode: some View {
+        if !running {
+            BreathTodayCard(sessions: sessions, today: Repository.localDayKey(Date()),
+                            goalMinutes: $dailyGoalMinutes)
+            BreathIntentRow(selectedProtocolId: selectedProtocol?.id) { id in
+                pace = .catalog(id)
+            }
+        }
         statusRow
         orbCard
         controlRow
+        if !running, let logged = justLogged {
+            BreathSummaryCard(session: logged,
+                              streak: BreathSessionStats.streaks(today: Repository.localDayKey(Date()),
+                                                                 sessions: sessions).current,
+                              totalSessions: sessions.count) { start() }
+        }
         if let line = outcomeLine { outcomeCard(line) }
         readoutRow
         coherenceCard
+        if !running {
+            BreathHistoryCard(sessions: sessions) { showHistory = true }
+        }
         if !live.bonded { hapticHint }
+    }
+
+    /// Save the session that just ended to the on-device log. Sessions shorter than a minute are not
+    /// kept, so an accidental start never counts toward the streak or the daily goal.
+    private func logSession() {
+        guard sessionSeconds >= BreathSessionStats.minimumSessionSeconds else { return }
+        let started = Date().addingTimeInterval(-Double(sessionSeconds))
+        let protocolId: String
+        let protocolName: String
+        switch pace {
+        case .catalog(let id):
+            protocolId = id
+            protocolName = selectedProtocol?.title ?? id
+        case .resonance:
+            protocolId = "resonance"
+            protocolName = "Resonance"
+        }
+        let average: Double? = sessionRmssdCount > 0 ? sessionRmssdSum / Double(sessionRmssdCount) : nil
+        let session = BreathSession(id: UUID().uuidString,
+                                    dayKey: Repository.localDayKey(started),
+                                    startedAt: started.timeIntervalSince1970,
+                                    protocolId: protocolId,
+                                    protocolName: protocolName,
+                                    durationSeconds: sessionSeconds,
+                                    breaths: breathCount > 0 ? breathCount : nil,
+                                    rmssdBefore: baselineRmssd,
+                                    rmssdAfter: average)
+        sessions = BreathSessionStore.append(session)
+        justLogged = session
     }
 
     /// Start a one-minute haptic breathing cue at the user's locked resonance pace when "Use my resonance
@@ -725,6 +783,7 @@ private struct BreathingContent: View {
         stageIndex = 0
         phaseLabel = nil
         endedOutcome = nil
+        justLogged = nil
         baselineRmssd = rmssd
         sessionRmssdSum = 0
         sessionRmssdCount = 0
@@ -750,7 +809,7 @@ private struct BreathingContent: View {
         // the strap to stop haptics too (best-effort; no-op when unbonded / on a 5/MG). Only when we were
         // actually buzzing, so a stop on an idle trainer stays silent.
         if wasRunning { model.stopHaptics() }
-        if wasRunning { captureOutcome() }
+        if wasRunning { captureOutcome(); logSession() }
         if reduceMotion {
             orbProgress = 0
         } else {

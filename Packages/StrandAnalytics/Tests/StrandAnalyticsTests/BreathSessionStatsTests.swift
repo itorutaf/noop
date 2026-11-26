@@ -44,6 +44,14 @@ final class BreathSessionStatsTests: XCTestCase {
         XCTAssertEqual(got, StreakCalculator.Streaks(current: 2, longest: 2))
     }
 
+    func testTotalsAndPercentChange() {
+        let s = [session("2026-11-23", 150), session("2026-11-24", 200)]
+        XCTAssertEqual(BreathSessionStats.totalMinutes(s), 5)
+        XCTAssertEqual(BreathSessionStats.rmssdPercentChange(session("2026-11-24", 300, before: 40, after: 50)), 25)
+        XCTAssertNil(BreathSessionStats.rmssdPercentChange(session("2026-11-24", 300, before: 0, after: 50)))
+        XCTAssertNil(BreathSessionStats.rmssdPercentChange(session("2026-11-24", 300)))
+    }
+
     func testRmssdDelta() {
         XCTAssertEqual(session("2026-11-24", 300, before: 40, after: 52).rmssdDelta, 12)
         XCTAssertNil(session("2026-11-24", 300, before: 40).rmssdDelta)

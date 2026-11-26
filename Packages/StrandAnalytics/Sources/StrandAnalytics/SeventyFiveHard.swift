@@ -36,7 +36,8 @@ public enum SeventyFiveHard {
         public var dayKey: String
         /// Length in minutes of each workout counted for the day (detected or entered by hand).
         public var workoutMinutes: [Int]
-        /// At least one of the day's workouts was outdoors.
+        /// One of the day's workouts was outdoors. A plain tick: the workouts task separately requires
+        /// the two qualifying sessions, so this one never disagrees with what the user ticked.
         public var outdoorWorkout: Bool
         /// Water logged for the day, in millilitres.
         public var waterML: Int
@@ -103,7 +104,7 @@ public enum SeventyFiveHard {
     public static func isDone(_ task: Task, in log: DayLog) -> Bool {
         switch task {
         case .workouts:       return qualifyingWorkouts(log) >= requiredWorkouts
-        case .outdoorWorkout: return log.outdoorWorkout && qualifyingWorkouts(log) >= 1
+        case .outdoorWorkout: return log.outdoorWorkout
         case .water:          return log.waterML >= waterGoalML
         case .reading:        return log.pagesRead >= pagesGoal
         case .diet:           return log.dietFollowed
@@ -152,8 +153,7 @@ public enum SeventyFiveHard {
                 if completeByDay[d] == true {
                     completed += 1
                 } else {
-                    // The failed day may have no log, so derive its key from a neighbour-free source:
-                    // fall back to the start key offset only when no log carried the day.
+                    // A missed day may have no log at all, so derive its key from the day number.
                     return Status(state: .failed, dayNumber: dayNumber, completedDays: completed,
                                   failedDayKey: keyByDay[d] ?? isoDay(d))
                 }
@@ -167,9 +167,32 @@ public enum SeventyFiveHard {
         return Status(state: state, dayNumber: dayNumber, completedDays: completed, failedDayKey: nil)
     }
 
+    // MARK: - Day helpers
+
+    /// Whole civil days from `startDay` to `day` (0 when they are the same day, negative when `day` is
+    /// earlier). Nil when either key cannot be parsed.
+    public static func daysBetween(_ startDay: String, _ day: String) -> Int? {
+        guard let a = Baselines.isoEpochDay(startDay), let b = Baselines.isoEpochDay(day) else { return nil }
+        return b - a
+    }
+
+    /// The day key `offset` days after `startDay` (offset 0 is the start day itself).
+    public static func dayKey(startDay: String, offset: Int) -> String? {
+        guard let a = Baselines.isoEpochDay(startDay) else { return nil }
+        return isoDay(a + offset)
+    }
+
+    /// Every day key of the run from `startDay` through `today`, oldest first, capped at the 75-day
+    /// window. Empty when `today` is before the start or a key cannot be parsed.
+    public static func dayKeys(startDay: String, through today: String) -> [String] {
+        guard let a = Baselines.isoEpochDay(startDay), let b = Baselines.isoEpochDay(today), b >= a else { return [] }
+        let last = Swift.min(b, a + totalDays - 1)
+        return (a...last).map { isoDay($0) }
+    }
+
     /// ISO `yyyy-MM-dd` for a civil epoch day (inverse of `Baselines.isoEpochDay`; Howard Hinnant's
     /// `civil_from_days`).
-    static func isoDay(_ epochDay: Int) -> String {
+    public static func isoDay(_ epochDay: Int) -> String {
         let z = epochDay + 719_468
         let era = (z >= 0 ? z : z - 146_096) / 146_097
         let doe = z - era * 146_097

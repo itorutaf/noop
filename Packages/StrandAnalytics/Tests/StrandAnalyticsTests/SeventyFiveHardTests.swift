@@ -33,10 +33,13 @@ final class SeventyFiveHardTests: XCTestCase {
         XCTAssertEqual(SeventyFiveHard.remaining(log), [.workouts])
     }
 
-    func testOutdoorNeedsAQualifyingWorkout() {
+    func testOutdoorIsItsOwnTick() {
         var log = full("2026-11-24")
         log.workoutMinutes = [20]
-        XCTAssertFalse(SeventyFiveHard.isDone(.outdoorWorkout, in: log))
+        XCTAssertTrue(SeventyFiveHard.isDone(.outdoorWorkout, in: log))
+        XCTAssertEqual(SeventyFiveHard.remaining(log), [.workouts])
+        log.outdoorWorkout = false
+        XCTAssertEqual(SeventyFiveHard.remaining(log), [.workouts, .outdoorWorkout])
     }
 
     func testWaterAndPagesBoundaries() {
@@ -105,6 +108,18 @@ final class SeventyFiveHardTests: XCTestCase {
         let s = SeventyFiveHard.status(startDay: "2026-11-24", today: "2026-11-26", logs: logs)
         XCTAssertEqual(s.completedDays, 3)
         XCTAssertEqual(s.dayNumber, 3)
+    }
+
+    func testDayHelpers() {
+        XCTAssertEqual(SeventyFiveHard.daysBetween("2026-11-24", "2026-11-24"), 0)
+        XCTAssertEqual(SeventyFiveHard.daysBetween("2026-11-24", "2026-12-01"), 7)
+        XCTAssertEqual(SeventyFiveHard.daysBetween("2026-11-24", "2026-11-23"), -1)
+        XCTAssertNil(SeventyFiveHard.daysBetween("nope", "2026-11-23"))
+        XCTAssertEqual(SeventyFiveHard.dayKey(startDay: "2026-11-24", offset: 74), "2027-02-06")
+        XCTAssertEqual(SeventyFiveHard.dayKeys(startDay: "2026-11-29", through: "2026-12-01"),
+                       ["2026-11-29", "2026-11-30", "2026-12-01"])
+        XCTAssertEqual(SeventyFiveHard.dayKeys(startDay: "2026-11-24", through: "2027-06-01").count, 75)
+        XCTAssertEqual(SeventyFiveHard.dayKeys(startDay: "2026-11-24", through: "2026-11-23"), [])
     }
 
     func testIsoDayRoundTrips() {

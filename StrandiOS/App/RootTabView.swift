@@ -479,6 +479,8 @@ struct RootTabView: View {
                     MoreRow("Lab Book", "books.vertical.fill", .labBook)
                     MoreRow("Stress", "bolt.heart.fill", .stress)
                     MoreRow("Breathe", "wind", .breathe)
+                    // The opt-in 75-day challenge checklist (local-only; see SeventyFiveHardView).
+                    MoreRow("75 Hard", "flag.checkered", .seventyFiveHard)
                     MoreRow("Intervals", "timer", .intervals)
                     // Experimental beat-to-beat regularity visualization — self-gates on its own consent.
                     MoreRow("Rhythm", "waveform.path", .rhythm)
@@ -598,7 +600,7 @@ struct RootTabView: View {
 /// registration in `moreTab`.
 private enum MoreDestination: Hashable {
     case insightsHub, intelligence, coach, insights, explore, compare
-    case live, workouts, liftLog, health, labBook, stress, breathe, intervals, rhythm
+    case live, workouts, liftLog, health, labBook, stress, breathe, seventyFiveHard, intervals, rhythm
     case fusedRecord, appleHealth, miBand, dataSources, backupSync, shortcutsExport, noopLimitations
     case alarms, automations, testCentre, siriShortcuts, powerSaving, settings
 
@@ -617,6 +619,7 @@ private enum MoreDestination: Hashable {
         case .labBook:         LabBookView()
         case .stress:          StressView()
         case .breathe:         BreathingView()
+        case .seventyFiveHard: SeventyFiveHardView()
         case .intervals:       IntervalTimerView()
         case .rhythm:          RhythmHost()
         case .fusedRecord:     FusedRecordHost()

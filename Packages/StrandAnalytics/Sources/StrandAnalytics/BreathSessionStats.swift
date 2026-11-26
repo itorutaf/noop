@@ -19,23 +19,26 @@ public struct BreathSession: Equatable, Sendable, Codable, Identifiable {
     public var protocolName: String
     /// How long the session ran, in seconds.
     public var durationSeconds: Int
-    /// Rolling HRV (RMSSD, ms) at the start and end, when a strap supplied R-R intervals.
+    /// Completed breath cycles, when the session was paced (nil for guided, timer-only sessions).
+    public var breaths: Int?
+    /// HRV (RMSSD, ms) at the start, and the session average, when a strap supplied R-R intervals.
     public var rmssdBefore: Double?
     public var rmssdAfter: Double?
 
     public init(id: String, dayKey: String, startedAt: Double, protocolId: String, protocolName: String,
-                durationSeconds: Int, rmssdBefore: Double? = nil, rmssdAfter: Double? = nil) {
+                durationSeconds: Int, breaths: Int? = nil, rmssdBefore: Double? = nil, rmssdAfter: Double? = nil) {
         self.id = id
         self.dayKey = dayKey
         self.startedAt = startedAt
         self.protocolId = protocolId
         self.protocolName = protocolName
         self.durationSeconds = durationSeconds
+        self.breaths = breaths
         self.rmssdBefore = rmssdBefore
         self.rmssdAfter = rmssdAfter
     }
 
-    /// Change in RMSSD across the session (after minus before), when both ends were measured.
+    /// Change in RMSSD from the start to the session average, when both were measured.
     public var rmssdDelta: Double? {
         guard let before = rmssdBefore, let after = rmssdAfter else { return nil }
         return after - before
@@ -77,6 +80,18 @@ public enum BreathSessionStats {
         guard goalMinutes > 0 else { return 0 }
         let done = Double(seconds(on: today, sessions: sessions)) / 60.0
         return Swift.min(1, Swift.max(0, done / Double(goalMinutes)))
+    }
+
+    /// Total whole minutes across every logged session.
+    public static func totalMinutes(_ sessions: [BreathSession]) -> Int {
+        sessions.reduce(0) { $0 + Swift.max(0, $1.durationSeconds) } / 60
+    }
+
+    /// Percent change in RMSSD from the start to the session average, rounded. Nil without both readings
+    /// or when the starting value is not positive.
+    public static func rmssdPercentChange(_ session: BreathSession) -> Int? {
+        guard let before = session.rmssdBefore, before > 0, let after = session.rmssdAfter else { return nil }
+        return Int(((after - before) / before * 100).rounded())
     }
 
     /// Current and longest runs of days that carry at least one session of `minimumSessionSeconds` or more.
