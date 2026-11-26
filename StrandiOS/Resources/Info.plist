@@ -10,6 +10,7 @@
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).coachbrief</string>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).healthwriteback</string>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).rescore</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).stalebattery</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
@@ -62,14 +63,14 @@
 	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>NOOP connects directly to your WHOOP strap over Bluetooth to read heart rate, R-R intervals, battery, and sensor data locally on your iPhone. Nothing leaves your device.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>NOOP uses the camera only when you take a 75 Hard progress photo. The photo is stored on this device and never uploaded.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>NOOP reads your own Apple Health data on-device to compute recovery, strain, and sleep. Nothing leaves your device.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>NOOP writes the metrics it computes from your strap back into Apple Health, on-device and only when you allow it.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>NOOP records your route during an outdoor workout to show distance, pace, and a map, and keeps recording while the screen is off. The route stays on your device. Nothing leaves it.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>NOOP uses the camera only when you take a 75 Hard progress photo. The photo is stored on this device and never uploaded.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>NOOP uses the microphone to let you ask the coach a question by voice. The audio is transcribed on-device and never leaves your iPhone.</string>
 	<key>NSMotionUsageDescription</key>
